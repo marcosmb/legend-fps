@@ -40,7 +40,7 @@ button{cursor:pointer;border:0;border-radius:10px;padding:12px 20px;background:#
   <div id="topRight">
     <div class="panel"><div class="label">OBJETO</div><div id="weapon" class="value">ESPADA</div><div id="ammo" class="label">∞</div></div>
   </div>
-  <div id="objective" class="panel"><b>OBJETIVO</b><span id="objectiveText">Habla con la gente de Villa Roble</span></div>
+  <div id="objective" class="panel"><b>OBJETIVO</b><span id="objectiveText">Habla con la gente de Villa Roble</span><small id="dungeonItems" style="display:none;margin-left:10px;opacity:.55"></small></div>
   <div id="crosshair">+</div>
   <div id="prompt"></div>
   <div id="toast"></div>
@@ -286,5 +286,74 @@ function drawWeapon(h){ctx.save();ctx.translate(canvas.width*.5,h*.93);ctx.rotat
 function drawMini(){mctx.clearRect(0,0,180,120);const m=map(),sx=180/m[0].length,sy=120/m.length;mctx.fillStyle='#0b100c';mctx.fillRect(0,0,180,120);for(let y=0;y<m.length;y++)for(let x=0;x<m[0].length;x++){mctx.fillStyle=m[y][x]==='#'?'#3f493b':'#1a2519';mctx.fillRect(x*sx,y*sy,sx+.3,sy+.3)}mctx.fillStyle='#e7cc6c';mctx.beginPath();mctx.arc((state.p.x/TILE+.5)*sx,(state.p.y/TILE+.5)*sy,3,0,TAU);mctx.fill()}
 function nearestPrompt(){let n=nearestNpc(),it=nearestItem();if(n)return "E · Hablar con "+n.name;if(it)return "E · Recoger objeto";if(state.zone==='field'&&state.p.x>29*TILE)return state.doorDungeon?"E · Entrar en la fortaleza":"E · Abrir puerta de la fortaleza";return ""}
 function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;const modalOpen=!dialogue.classList.contains('hidden')||!shop.classList.contains('hidden')||!help.classList.contains('hidden');if(state.running&&!state.paused&&!modalOpen){movement(dt);interactZoneTransitions();enemiesUpdate(dt);shotsUpdate(dt);state.cool=Math.max(0,state.cool-dt);state.flash=Math.max(0,state.flash-dt);render();hudUpdate();const pr=nearestPrompt();promptEl.textContent=pr;promptEl.style.opacity=pr?1:0}else if(state.running&&!state.paused){render()}requestAnimationFrame(loop)}
+
+/* ===== DUNGEON PROGRESSION V0.2 ===== */
+Object.assign(state,{dungeonMap:false,compass:false,dungeonChestOpened:false,dungeonGateOpen:false});
+const _setupDungeonV1=setupDungeon;
+setupDungeon=function(){
+  _setupDungeonV1();
+  state.dungeonMap=false;state.compass=false;state.dungeonChestOpened=false;state.dungeonGateOpen=false;
+  state.items.push({x:4.7*TILE,y:17.5*TILE,k:"map"},{x:20.8*TILE,y:7.4*TILE,k:"compass"},{x:17.2*TILE,y:11.5*TILE,k:"dungeonChest"},{x:23*TILE,y:7.5*TILE,k:"switch"});
+  setObjective("Explora la fortaleza: encuentra el mapa y el cofre de la sala central");
+  toast("FORTALEZA DEL ECLIPSE · Primera mazmorra");
+};
+const _hudUpdateV1=hudUpdate;
+hudUpdate=function(){
+  _hudUpdateV1();
+  const di=document.getElementById('dungeonItems');
+  if(di){di.style.display=state.zone==='dungeon'?'inline':'none';di.textContent=state.zone==='dungeon'?'MAPA '+(state.dungeonMap?'✓':'—')+' · BRÚJULA '+(state.compass?'✓':'—'):'';}
+};
+const _pickupV1=pickup;
+pickup=function(it){
+  if(it.k==='map'){state.items=state.items.filter(x=>x!==it);state.dungeonMap=true;toast("Has encontrado el MAPA de la Fortaleza");setObjective(state.dungeonChestOpened?"Activa el cristal antiguo con el boomerang":"Busca el cofre de la sala central");hudUpdate();return}
+  if(it.k==='compass'){state.items=state.items.filter(x=>x!==it);state.compass=true;toast("Has encontrado la BRÚJULA");setObjective("Activa el cristal antiguo con el boomerang");hudUpdate();return}
+  if(it.k==='dungeonChest'||it.k==='switch'){return}
+  if(it.k==='relic'){state.items=state.items.filter(x=>x!==it);state.quest='done';setObjective("La Reliquia del Amanecer es tuya. Regresa a Villa Roble");toast("✦ RELIQUIA DEL AMANECER OBTENIDA ✦",3200);hudUpdate();return}
+  _pickupV1(it);
+};
+const _interactV1=interact;
+interact=function(){
+  const chest=state.items.find(it=>it.k==='dungeonChest'&&dist(state.p,it)<62);
+  if(chest&&state.zone==='dungeon'){
+    if(state.dungeonChestOpened){toast("El cofre está vacío");return}
+    if(state.keys<1){toast("El cofre está cerrado. Necesitas una llave.");return}
+    state.keys--;state.dungeonChestOpened=true;state.inv.add("boomerang");state.weapon="boomerang";
+    state.items=state.items.filter(x=>x!==chest);
+    toast("COFRE ABIERTO · ¡Has conseguido el BOOMERANG!");setObjective("Usa el boomerang contra el cristal antiguo de la sala norte");hudUpdate();return;
+  }
+  const sw=state.items.find(it=>it.k==='switch'&&dist(state.p,it)<70);
+  if(sw&&state.zone==='dungeon'){toast("El cristal es demasiado resistente. Lanza el boomerang.");return}
+  _interactV1();
+};
+const _shotsUpdateV1=shotsUpdate;
+shotsUpdate=function(dt){
+  if(state.zone==='dungeon'&&!state.dungeonGateOpen){
+    for(let i=state.shots.length-1;i>=0;i--){
+      const s=state.shots[i],sw=state.items.find(it=>it.k==='switch');
+      if(sw&&s.k==='boomerang'&&dist(s,sw)<42){
+        state.dungeonGateOpen=true;
+        state.items=state.items.filter(x=>x!==sw);
+        state.shots.splice(i,1);
+        toast("¡El cristal antiguo responde! La cámara del Guardián se abre.",3200);
+        setObjective("Entra en la cámara del Guardián del Eclipse");
+        break;
+      }
+    }
+  }
+  _shotsUpdateV1(dt);
+};
+const _enemiesUpdateV1=enemiesUpdate;
+enemiesUpdate=function(dt){
+  const boss=state.enemies.find(e=>e.kind==='boss');
+  const bx=boss?.x,by=boss?.y;
+  _enemiesUpdateV1(dt);
+  if(boss&&!state.dungeonGateOpen){boss.hp=boss.max;if(bx!==undefined){boss.x=bx;boss.y=by}}
+};
+const _attackV1=attack;
+attack=function(){
+  const boss=state.enemies.find(e=>e.kind==='boss'&&!e.dead);
+  if(state.zone==='dungeon'&&boss&&!state.dungeonGateOpen&&dist(state.p,boss)<180){toast("El Guardián está protegido por el cristal antiguo");}
+  _attackV1();
+};
 requestAnimationFrame(loop);setupVillage();hudUpdate();</script>
 </body></html>
