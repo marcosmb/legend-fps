@@ -1,3 +1,24 @@
+
+// ===== STARTUP SAFETY / DIAGNOSTICS =====
+const fatal=document.createElement('div');
+fatal.id='fatal-error';
+fatal.style.cssText='position:fixed;inset:20px;z-index:99;display:none;padding:24px;background:rgba(10,12,10,.97);color:#f4e8bd;border:1px solid #aa7d45;border-radius:14px;font:14px/1.55 system-ui;white-space:pre-wrap;overflow:auto';
+document.body.appendChild(fatal);
+function showFatal(err){
+  fatal.style.display='block';
+  fatal.textContent='LEGEND FPS · ERROR DE ARRANQUE\n\n'+(err?.stack||err?.message||String(err))+'\n\nRecarga la página después de corregirlo.';
+  console.error(err);
+}
+window.addEventListener('error',e=>showFatal(e.error||new Error(e.message+' @ '+e.filename+':'+e.lineno)));
+window.addEventListener('unhandledrejection',e=>showFatal(e.reason||new Error('Promise rejection')));
+function webglCheck(){
+  try{
+    const test=document.createElement('canvas');
+    const gl=test.getContext('webgl2')||test.getContext('webgl');
+    if(!gl) throw new Error('WebGL no está disponible en este navegador.');
+  }catch(err){showFatal(err)}
+}
+webglCheck();
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
 
 const root=document.getElementById('game');
@@ -256,4 +277,17 @@ function loop(){
  }
  if(state.started&&!state.paused){cameraUpdate();updatePrompt();renderer.render(scene,camera)}
 }
-addEventListener('resize',resize);resize();renderer.render(scene,camera);
+addEventListener('resize',resize);resize();
+// Guaranteed visible 3D sanity scene before gameplay.
+(function bootSanity(){
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x536d47,roughness:1}));
+  floor.rotation.x=-Math.PI/2;floor.position.y=0;scene.add(floor);
+  const wall=new THREE.Mesh(new THREE.BoxGeometry(8,5,1),new THREE.MeshStandardMaterial({color:0x927d5a,roughness:.9}));
+  wall.position.set(0,2.5,-12);wall.castShadow=true;wall.receiveShadow=true;scene.add(wall);
+  const treeTrunk=new THREE.Mesh(new THREE.CylinderGeometry(.5,.7,3,10),new THREE.MeshStandardMaterial({color:0x624832,roughness:1}));
+  treeTrunk.position.set(-10,1.5,-16);treeTrunk.castShadow=true;scene.add(treeTrunk);
+  const treeTop=new THREE.Mesh(new THREE.ConeGeometry(3.2,6,10),new THREE.MeshStandardMaterial({color:0x3d6c40,roughness:1}));
+  treeTop.position.set(-10,5.2,-16);treeTop.castShadow=true;scene.add(treeTop);
+  camera.position.set(0,1.7,8);camera.lookAt(0,2,-12);
+})();
+renderer.render(scene,camera);
