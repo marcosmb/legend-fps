@@ -77,7 +77,10 @@ actors.add(g);state.enemies.push(g);return g}
 function itemMesh(kind,x,z){let geo,mat=new THREE.MeshStandardMaterial({color:kind==='heart'?0xe45858:kind==='rupee'?0x46c7a0:kind==='key'?0xe1c86d:kind==='relic'?0xf5dc77:kind==='map'?0xd9d0b1:0xb8c6cc,metalness:.15,roughness:.35});if(kind==='key')geo=new THREE.TorusGeometry(.35,.11,8,16);else if(kind==='heart')geo=new THREE.OctahedronGeometry(.42,1);else if(kind==='rupee')geo=new THREE.OctahedronGeometry(.42,0);else geo=new THREE.BoxGeometry(.7,.55,.15);const m=new THREE.Mesh(geo,mat);m.position.set(x,.75,z);m.castShadow=true;m.userData={type:'item',kind};props.add(m);state.items.push(m);return m}
 function buildVillage(){
 state.zone='village';clearZone();
-// Orientación inicial hacia el centro del pueblo: siempre arrancamos viendo el mundo.
+// Marcador grande y visible frente al jugador para garantizar una referencia visual al arrancar.
+const landmark=cube('VillageLandmark',8,7,2,new THREE.MeshStandardMaterial({color:0x7b6a4d,roughness:.9}),new THREE.Vector3(0,3.5,-18),true);
+const landmarkRoof=new THREE.Mesh(new THREE.ConeGeometry(6,3.5,4),new THREE.MeshStandardMaterial({color:0x55382c,roughness:.9}));landmarkRoof.rotation.y=Math.PI/4;landmarkRoof.position.set(0,8.5,-18);landmarkRoof.castShadow=true;props.add(landmarkRoof);
+// Orientación inicial hacia el centro del pueblo.
 state._lookTarget=new THREE.Vector3(0,1.7,-18);scene.background.set(0x91a9ae);scene.fog.color.set(0x91a9ae);scene.fog.density=.0065;
 ground(170,grassMat);
 const road=new THREE.Mesh(new THREE.PlaneGeometry(24,135),pathMat);road.rotation.x=-Math.PI/2;road.position.set(0,.015,-10);road.receiveShadow=true;props.add(road);
