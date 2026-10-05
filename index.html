@@ -260,7 +260,7 @@ if(state.weapon==='candle'){toast("La llama ilumina la oscuridad");return}
 state.shots.push({x:state.p.x,y:state.p.y,a:state.p.a,k:state.weapon,life:1.4})
 }
 function enemiesUpdate(dt){
-for(const e of state.enemies){if(e.dead)continue;e.c=Math.max(0,e.c-dt);const d=dist(state.p,e);if(d<430){const a=Math.atan2(state.p.y-e.y,state.p.x-e.x),speed=e.kind==='boss'?34:e.kind==='knight'?22:35;const nx=e.x+Math.cos(a)*speed*dt,ny=e.y+Math.sin(a)*speed*dt;if(free(nx,ny)){e.x=nx;e.y=ny}}if(d<35&&e.c<=0){e.c=e.kind==='boss'?.5:.9;state.p.hp=Math.max(0,state.p.hp-1);state.flash=.25;hudUpdate();if(state.p.hp<=0){toast("Has caído en combate");pauseGame(true)}}}}
+for(const e of state.enemies){if(e.dead)continue;e.c=Math.max(0,e.c-dt);const d=dist(state.p,e);if(d<430){const a=Math.atan2(state.p.y-e.y,state.p.x-e.x),speed=e.kind==='boss'?34:e.kind==='knight'?22:35;const nx=e.x+Math.cos(a)*speed*dt,ny=e.y+Math.sin(a)*speed*dt;if(free(nx,ny)){e.x=nx;e.y=ny}}if(d<35&&e.c<=0){e.c=e.kind==='boss' ? 0.5 : 0.9;state.p.hp=Math.max(0,state.p.hp-1);state.flash=.25;hudUpdate();if(state.p.hp<=0){toast("Has caído en combate");pauseGame(true)}}}}
 function shotsUpdate(dt){
 for(let i=state.shots.length-1;i>=0;i--){const s=state.shots[i];s.life-=dt;s.x+=Math.cos(s.a)*480*dt;s.y+=Math.sin(s.a)*480*dt;if(s.life<=0||wall(s.x,s.y)){if(s.k==='bomb')explode(s.x,s.y);state.shots.splice(i,1);continue}
 for(const e of state.enemies){if(e.dead)continue;if(dist(s,e)<30){if(s.k==='bomb'){explode(s.x,s.y);state.shots.splice(i,1);break}e.hp-=s.k==='rod'?3:2;state.shots.splice(i,1);if(e.hp<=0){e.dead=true;state.rupees+=e.kind==='boss'?25:2;if(e.kind==='boss'){state.bossDead=true;state.quest='relic';setObjective("Recoge la Reliquia del Amanecer");state.items.push({x:e.x,y:e.y,k:'relic'})}else toast(e.name+" derrotado · +2 rupias")}hudUpdate();break}}}}
@@ -429,7 +429,7 @@ function drawVignette(w,h){
   ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
 }
 function drawWeaponRealistic(h){
-  ctx.save();const bob=Math.sin(performance.now()/120)*(held.size?.02||1)*2;ctx.translate(canvas.width*.5+bob,h*.96);ctx.rotate(state.cool>0?-.5:0);
+  ctx.save();const bob=Math.sin(performance.now()/120)*2;ctx.translate(canvas.width*.5+bob,h*.96);ctx.rotate(state.cool>0?-.5:0);
   ctx.fillStyle='#382419';ctx.fillRect(-11,-102,22,97);ctx.fillStyle='#9b6c3f';ctx.fillRect(-9,-88,18,70);
   const k=state.weapon;
   if(k==='sword'){
