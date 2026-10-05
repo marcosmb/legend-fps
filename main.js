@@ -7,7 +7,7 @@ const speakerEl=document.getElementById('dialogue-speaker'),dialogueTextEl=docum
 const inventoryGrid=document.getElementById('inventory-grid');
 
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.12; root.appendChild(renderer.domElement);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); renderer.setClearColor(0x91a9ae,1); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.12; root.appendChild(renderer.domElement);
 
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x8da7ae);
@@ -75,8 +75,24 @@ if(kind==='knight'||kind==='boss'){const blade=cube('EnemyBlade',.18,2.2,.18,new
 if(kind==='bat'){for(const s of [-1,1]){const wing=new THREE.Mesh(new THREE.PlaneGeometry(1.5,.8),new THREE.MeshStandardMaterial({color:0x3b2b50,side:THREE.DoubleSide,transparent:true,opacity:.85}));wing.position.set(s*.8,1.3,0);wing.rotation.y=s*.4;g.add(wing)}}
 actors.add(g);state.enemies.push(g);return g}
 function itemMesh(kind,x,z){let geo,mat=new THREE.MeshStandardMaterial({color:kind==='heart'?0xe45858:kind==='rupee'?0x46c7a0:kind==='key'?0xe1c86d:kind==='relic'?0xf5dc77:kind==='map'?0xd9d0b1:0xb8c6cc,metalness:.15,roughness:.35});if(kind==='key')geo=new THREE.TorusGeometry(.35,.11,8,16);else if(kind==='heart')geo=new THREE.OctahedronGeometry(.42,1);else if(kind==='rupee')geo=new THREE.OctahedronGeometry(.42,0);else geo=new THREE.BoxGeometry(.7,.55,.15);const m=new THREE.Mesh(geo,mat);m.position.set(x,.75,z);m.castShadow=true;m.userData={type:'item',kind};props.add(m);state.items.push(m);return m}
+
+function clouds(){
+  for(let i=0;i<9;i++){
+    const g=new THREE.Group();
+    g.position.set((i-4)*26,18+(i%3)*3,-20-(i%4)*18);
+    for(let j=0;j<4;j++){
+      const puff=new THREE.Mesh(new THREE.SphereGeometry(3.5+(j%2),12,8),new THREE.MeshBasicMaterial({color:0xf1f2eb,transparent:true,opacity:.82}));
+      puff.position.set((j-1.5)*3,Math.sin(j)*.6,Math.cos(j)*1.2);
+      g.add(puff);
+    }
+    world.add(g);
+  }
+}
 function buildVillage(){
 state.zone='village';clearZone();
+scene.add(new THREE.AmbientLight(0xffffff,1.35));
+const guaranteedGround=new THREE.Mesh(new THREE.PlaneGeometry(240,240),new THREE.MeshBasicMaterial({color:0x526844}));guaranteedGround.rotation.x=-Math.PI/2;guaranteedGround.position.y=-0.01;guaranteedGround.receiveShadow=true;world.add(guaranteedGround);
+
 // Marcador grande y visible frente al jugador para garantizar una referencia visual al arrancar.
 const landmark=cube('VillageLandmark',8,7,2,new THREE.MeshStandardMaterial({color:0x7b6a4d,roughness:.9}),new THREE.Vector3(0,3.5,-18),true);
 const landmarkRoof=new THREE.Mesh(new THREE.ConeGeometry(6,3.5,4),new THREE.MeshStandardMaterial({color:0x55382c,roughness:.9}));landmarkRoof.rotation.y=Math.PI/4;landmarkRoof.position.set(0,8.5,-18);landmarkRoof.castShadow=true;props.add(landmarkRoof);
@@ -91,7 +107,7 @@ npc('Alma, la anciana',-2,-8,'elder',0xd6d0bf);npc('Bran, el herrero',-20,-13,'s
 itemMesh('key',-10,5);itemMesh('rupee',10,3);itemMesh('heart',27,27);
 state.interactive.push(...state.npcs);
 setObjective(state.quest==='intro'?'Habla con Alma, la anciana':'Regresa a Villa Roble');
-locEl.textContent='VILLA ROBLE';camera.position.copy(state.spawn.village);yaw=0;
+locEl.textContent='VILLA ROBLE';camera.position.copy(state.spawn.village);yaw=0;pitch=-0.04;camera.lookAt(0,1.8,-18);clouds();
 }
 function buildField(){
 state.zone='field';clearZone();scene.background.set(0x7f9a9a);scene.fog.color.set(0x7f9a9a);scene.fog.density=.0075;ground(190,grassMat);
