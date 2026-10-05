@@ -76,7 +76,9 @@ if(kind==='bat'){for(const s of [-1,1]){const wing=new THREE.Mesh(new THREE.Plan
 actors.add(g);state.enemies.push(g);return g}
 function itemMesh(kind,x,z){let geo,mat=new THREE.MeshStandardMaterial({color:kind==='heart'?0xe45858:kind==='rupee'?0x46c7a0:kind==='key'?0xe1c86d:kind==='relic'?0xf5dc77:kind==='map'?0xd9d0b1:0xb8c6cc,metalness:.15,roughness:.35});if(kind==='key')geo=new THREE.TorusGeometry(.35,.11,8,16);else if(kind==='heart')geo=new THREE.OctahedronGeometry(.42,1);else if(kind==='rupee')geo=new THREE.OctahedronGeometry(.42,0);else geo=new THREE.BoxGeometry(.7,.55,.15);const m=new THREE.Mesh(geo,mat);m.position.set(x,.75,z);m.castShadow=true;m.userData={type:'item',kind};props.add(m);state.items.push(m);return m}
 function buildVillage(){
-state.zone='village';clearZone();scene.background.set(0x91a9ae);scene.fog.color.set(0x91a9ae);scene.fog.density=.0065;
+state.zone='village';clearZone();
+// Orientación inicial hacia el centro del pueblo: siempre arrancamos viendo el mundo.
+state._lookTarget=new THREE.Vector3(0,1.7,-18);scene.background.set(0x91a9ae);scene.fog.color.set(0x91a9ae);scene.fog.density=.0065;
 ground(170,grassMat);
 const road=new THREE.Mesh(new THREE.PlaneGeometry(24,135),pathMat);road.rotation.x=-Math.PI/2;road.position.set(0,.015,-10);road.receiveShadow=true;props.add(road);
 house(-24,-18,14,11,0xb9a47d);house(24,-18,14,11,0xc2aa82);house(-24,16,13,10,0x9c987e);house(24,16,13,10,0xb2a286);house(0,-52,16,10,0x8c7863);
@@ -86,7 +88,7 @@ npc('Alma, la anciana',-2,-8,'elder',0xd6d0bf);npc('Bran, el herrero',-20,-13,'s
 itemMesh('key',-10,5);itemMesh('rupee',10,3);itemMesh('heart',27,27);
 state.interactive.push(...state.npcs);
 setObjective(state.quest==='intro'?'Habla con Alma, la anciana':'Regresa a Villa Roble');
-locEl.textContent='VILLA ROBLE';camera.position.copy(state.spawn.village);yaw=Math.PI;
+locEl.textContent='VILLA ROBLE';camera.position.copy(state.spawn.village);yaw=0;
 }
 function buildField(){
 state.zone='field';clearZone();scene.background.set(0x7f9a9a);scene.fog.color.set(0x7f9a9a);scene.fog.density=.0075;ground(190,grassMat);
