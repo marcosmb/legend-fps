@@ -355,5 +355,100 @@ attack=function(){
   if(state.zone==='dungeon'&&boss&&!state.dungeonGateOpen&&dist(state.p,boss)<180){toast("El Guardián está protegido por el cristal antiguo");}
   _attackV1();
 };
-requestAnimationFrame(loop);setupVillage();hudUpdate();</script>
+requestAnimationFrame(loop);setupVillage();hudUpdate();
+/* ===== REALISTIC VISUAL PASS V0.3 ===== */
+function rayHit(a,max=1000){
+  const ca=Math.cos(a),sa=Math.sin(a);
+  for(let d=3;d<max;d+=3){
+    const x=state.p.x+ca*d,y=state.p.y+sa*d;
+    if(wall(x,y)){
+      const tx=x/TILE-Math.floor(x/TILE),ty=y/TILE-Math.floor(y/TILE);
+      return {d,x,y,tx,ty,vertical:Math.abs(Math.cos(a))<Math.abs(Math.sin(a))};
+    }
+  }
+  return {d:max,x:state.p.x+ca*max,y:state.p.y+sa*max,tx:0,ty:0,vertical:false};
+}
+function shadeRGB(base,d,side){
+  const fog=Math.min(1,d/1000),light=Math.max(.18,1-d/920)*(side?.82:1);
+  const r=Math.max(8,Math.floor(base[0]*light*(1-fog*.42)+22*fog));
+  const g=Math.max(8,Math.floor(base[1]*light*(1-fog*.42)+25*fog));
+  const b=Math.max(8,Math.floor(base[2]*light*(1-fog*.42)+24*fog));
+  return [r,g,b];
+}
+function wallMaterial(){
+  if(state.zone==='dungeon')return [105,91,78];
+  if(state.zone==='village')return [128,111,82];
+  return [92,111,83];
+}
+function renderRealistic(){
+  const w=canvas.width,h=canvas.height,hor=h*.49;
+  const sky=ctx.createLinearGradient(0,0,0,hor);
+  if(state.zone==='dungeon'){sky.addColorStop(0,'#0d1215');sky.addColorStop(.55,'#1b2222');sky.addColorStop(1,'#34382f')}
+  else if(state.zone==='village'){sky.addColorStop(0,'#7892a1');sky.addColorStop(.58,'#aebcaa');sky.addColorStop(1,'#d0bd91')}
+  else{sky.addColorStop(0,'#6d8ba2');sky.addColorStop(.6,'#afc7b4');sky.addColorStop(1,'#d7c591')}
+  ctx.fillStyle=sky;ctx.fillRect(0,0,w,hor);
+  const floor=ctx.createLinearGradient(0,hor,0,h);
+  if(state.zone==='dungeon'){floor.addColorStop(0,'#5a554c');floor.addColorStop(1,'#131615')}
+  else if(state.zone==='village'){floor.addColorStop(0,'#786b4d');floor.addColorStop(1,'#22251e')}
+  else{floor.addColorStop(0,'#66734f');floor.addColorStop(1,'#20271d')}
+  ctx.fillStyle=floor;ctx.fillRect(0,hor,w,h-hor);
+  // Distant haze band
+  ctx.fillStyle=state.zone==='dungeon'?'rgba(205,195,170,.08)':'rgba(245,235,190,.15)';ctx.fillRect(0,hor-12,w,28);
+  const base=wallMaterial(),step=Math.max(2,Math.floor(w/620));
+  for(let x=0;x<w;x+=step){
+    const a=state.p.a-FOV/2+(x/w)*FOV,hit=rayHit(a),ca=Math.max(.15,hit.d*Math.cos(a-state.p.a));
+    const hh=Math.min(h*2,25000/ca),top=hor-hh/2;
+    let tex=hit.vertical?hit.tx:hit.ty;
+    const pattern=Math.sin((tex*18)+(Math.floor(hit.x/TILE)+Math.floor(hit.y/TILE))*2.7);
+    const mortar=Math.abs(pattern)<.08?0.56:1;
+    const n=shadeRGB([base[0]*mortar,base[1]*mortar,base[2]*mortar],ca,hit.vertical);
+    const grad=ctx.createLinearGradient(x,top,x,top+hh);
+    grad.addColorStop(0,`rgb(${n[0]+Math.floor(10*(1-tex))},${n[1]+Math.floor(10*(1-tex))},${n[2]+Math.floor(8*(1-tex))})`);
+    grad.addColorStop(.48,`rgb(${n[0]},${n[1]},${n[2]})`);
+    grad.addColorStop(1,`rgb(${Math.max(5,n[0]-16)},${Math.max(6,n[1]-16)},${Math.max(5,n[2]-12)})`);
+    ctx.fillStyle=grad;ctx.fillRect(x,top,step,hh);
+    if(hh>70&&((Math.floor(tex*16)%5)===0)){ctx.fillStyle='rgba(0,0,0,.12)';ctx.fillRect(x,top,1,hh)}
+  }
+  // Perspective floor seams for depth
+  ctx.lineWidth=1;
+  for(let i=1;i<12;i++){
+    const yy=hor+(i/12)**2*(h-hor);
+    ctx.strokeStyle=state.zone==='dungeon'?'rgba(210,200,175,.07)':'rgba(245,230,180,.06)';
+    ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(w,yy);ctx.stroke();
+  }
+  const oldDB=drawBillboards; oldDB(h);
+  drawWeaponRealistic(h);
+  drawVignette(w,h);
+  drawMini();
+}
+function drawVignette(w,h){
+  const g=ctx.createRadialGradient(w/2,h*.48,Math.min(w,h)*.18,w/2,h*.48,Math.max(w,h)*.72);
+  g.addColorStop(0,'rgba(0,0,0,0)');
+  g.addColorStop(.72,'rgba(0,0,0,.08)');
+  g.addColorStop(1,'rgba(0,0,0,.46)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+}
+function drawWeaponRealistic(h){
+  ctx.save();const bob=Math.sin(performance.now()/120)*(held.size?.02||1)*2;ctx.translate(canvas.width*.5+bob,h*.96);ctx.rotate(state.cool>0?-.5:0);
+  ctx.fillStyle='#382419';ctx.fillRect(-11,-102,22,97);ctx.fillStyle='#9b6c3f';ctx.fillRect(-9,-88,18,70);
+  const k=state.weapon;
+  if(k==='sword'){
+    const g=ctx.createLinearGradient(-18,-192,18,-106);g.addColorStop(0,'#f7ffff');g.addColorStop(.46,'#aab4b6');g.addColorStop(1,'#596267');ctx.fillStyle=g;
+    ctx.beginPath();ctx.moveTo(-18,-101);ctx.lineTo(-3,-195);ctx.quadraticCurveTo(0,-208,3,-195);ctx.lineTo(18,-101);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#b99b58';ctx.fillRect(-24,-106,48,9);ctx.fillStyle='#d1b76f';ctx.fillRect(-4,-111,8,7);
+  }else if(k==='bow'){
+    ctx.strokeStyle='#a87342';ctx.lineWidth=8;ctx.beginPath();ctx.arc(0,-108,55,Math.PI*.22,Math.PI*.78,true);ctx.stroke();ctx.strokeStyle='#e4dcc6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-38,-143);ctx.lineTo(38,-73);ctx.stroke();ctx.fillStyle='#d7dde0';ctx.fillRect(-2,-125,4,74);
+  }else if(k==='boomerang'){
+    ctx.strokeStyle='#d2ad62';ctx.lineWidth=13;ctx.beginPath();ctx.arc(0,-110,44,-1.25,1.25);ctx.stroke();ctx.strokeStyle='#f0d68a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-110,44,-1.2,1.2);ctx.stroke();
+  }else if(k==='bomb'){
+    ctx.fillStyle='#21241f';ctx.beginPath();ctx.arc(0,-108,34,0,TAU);ctx.fill();ctx.fillStyle='#82745f';ctx.fillRect(-8,-145,16,18);ctx.fillStyle='#f4b14d';ctx.beginPath();ctx.arc(10,-151,7,0,TAU);ctx.fill();
+  }else if(k==='candle'){
+    ctx.fillStyle='#d9c98f';ctx.fillRect(-14,-150,28,54);ctx.fillStyle='#e9a64f';ctx.beginPath();ctx.moveTo(0,-179);ctx.quadraticCurveTo(19,-150,0,-139);ctx.quadraticCurveTo(-19,-150,0,-179);ctx.fill();
+  }else{
+    ctx.fillStyle='#8b6bb3';ctx.fillRect(-12,-165,24,70);ctx.fillStyle='#d4b76a';ctx.beginPath();ctx.arc(0,-168,19,0,TAU);ctx.fill();
+  }
+  ctx.restore();
+}
+render=renderRealistic;
+</script>
 </body></html>
