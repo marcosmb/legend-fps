@@ -54,6 +54,7 @@ const state={
  spawn:{village:new THREE.Vector3(0,1.7,18),field:new THREE.Vector3(-26,1.7,3),dungeon:new THREE.Vector3(-15,1.7,40)}
 };
 const held=new Set();
+const movementKeys=new Set(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift']);
 let yaw=0,pitch=-0.03,attackCooldown=0,toastTimer=0,shake=0;
 
 const weapons={sword:['ESPADA','∞'],boomerang:['BOOMERANG','∞'],bow:['ARCO','FLECHAS'],bomb:['BOMBA','3'],candle:['VELA','∞'],rod:['VARITA','MAGIA']};
@@ -224,9 +225,15 @@ for(const e of state.enemies){if(e.userData.hp<=0)continue;e.userData.cool=Math.
 }
 function collides(pos){const r=.42;const box=new THREE.Box3(new THREE.Vector3(pos.x-r,pos.y-.9,pos.z-r),new THREE.Vector3(pos.x+r,pos.y+.3,pos.z+r));return state.colliders.some(b=>state.zone==='field'&&state.fortressOpen&&state.gateBox===b?false:b.intersectsBox(box))}
 function movement(dt){
-const forward=(held.has('w')?1:0)-(held.has('s')?1:0),strafe=(held.has('d')?1:0)-(held.has('a')?1:0);if(!forward&&!strafe)return;
-const len=Math.hypot(forward,strafe)||1;const f=forward/len,s=strafe/len,speed=(held.has('shift')?7.2:4.8)*dt;const dir=new THREE.Vector3(Math.sin(yaw)*f+Math.cos(yaw)*s,0,Math.cos(yaw)*f-Math.sin(yaw)*s);
-const np=camera.position.clone().addScaledVector(dir,speed);if(!collides(np))camera.position.copy(np);
+  const forward=(held.has('w')||held.has('arrowup')?1:0)-(held.has('s')||held.has('arrowdown')?1:0);
+  const strafe=(held.has('d')||held.has('arrowright')?1:0)-(held.has('a')||held.has('arrowleft')?1:0);
+  if(!forward&&!strafe)return;
+  const len=Math.hypot(forward,strafe)||1;
+  const f=forward/len,s=strafe/len;
+  const speed=(held.has('shift')?7.2:4.8)*dt;
+  const dir=new THREE.Vector3(Math.sin(yaw)*f+Math.cos(yaw)*s,0,Math.cos(yaw)*f-Math.sin(yaw)*s);
+  const np=camera.position.clone().addScaledVector(dir,speed);
+  if(!collides(np)){camera.position.copy(np);}
 }
 function transitionCheck(){const z=camera.position.z;if(state.zone==='village'&&z<-57){buildField();return}if(state.zone==='field'&&z>68){buildVillage();return}if(state.zone==='field'&&z<-67&&state.fortressOpen){buildDungeon();return}if(state.zone==='dungeon'&&z>53&&state.relic){state.quest='done';buildField();state.zone='field';camera.position.set(-26,1.7,4);setObjective('Regresa a Villa Roble con la Reliquia');toast('Has salido de la fortaleza');}}
 function cameraUpdate(){
@@ -243,7 +250,7 @@ renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0){attack();c
 document.addEventListener('mousemove',e=>{if(document.pointerLockElement===renderer.domElement&&!state.paused&&!state.dialogueOpen){yaw-=e.movementX*.0021;pitch-=e.movementY*.0021;pitch=Math.max(-1.35,Math.min(1.35,pitch))}});
 document.addEventListener('keydown',e=>{
 const k=e.key.toLowerCase();
-if(k==='w'||k==='a'||k==='s'||k==='d'||k==='shift'){held.add(k);e.preventDefault();return}
+if(movementKeys.has(k)){held.add(k);e.preventDefault();return}
 if(k==='escape'){if(state.dialogueOpen){dialogue.classList.add('hidden');state.dialogueOpen=false;return}if(!inventory.classList.contains('hidden')){inventory.classList.add('hidden');return}if(state.started)pauseGame(!state.paused);return}
 if(!state.started||state.paused)return;
 if(k==='e'||k==='enter'){if(state.dialogueOpen)nextDialogue();else interact();return}
@@ -271,11 +278,11 @@ function weaponRefresh(){renderWeapon()}
 const originalHud=hudUpdate;hudUpdate=function(){originalHud();updateInventory();};
 
 function loop(){
- requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);
- if(state.started&&!state.paused&&!state.dialogueOpen&&!state.shopOpen&&inventory.classList.contains('hidden')){
-   movement(dt);enemiesUpdate(dt);projectilesUpdate(dt);transitionCheck();attackCooldown=Math.max(0,attackCooldown-dt);
- }
- if(state.started&&!state.paused){cameraUpdate();updatePrompt();renderer.render(scene,camera)}
+  requestAnimationFrame(loop);
+  const dt=Math.min(clock.getDelta(),.05);
+  const canPlay=state.started&&!state.paused&&!state.dialogueOpen&&!state.shopOpen&&inventory.classList.contains('hidden');
+  if(canPlay){movement(dt);enemiesUpdate(dt);projectilesUpdate(dt);transitionCheck();attackCooldown=Math.max(0,attackCooldown-dt)}
+  if(state.started&&!state.paused){cameraUpdate();updatePrompt();renderer.render(scene,camera)}
 }
 addEventListener('resize',resize);resize();
 // Guaranteed visible 3D sanity scene before gameplay.
