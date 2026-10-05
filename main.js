@@ -76,7 +76,7 @@ if(kind==='bat'){for(const s of [-1,1]){const wing=new THREE.Mesh(new THREE.Plan
 actors.add(g);state.enemies.push(g);return g}
 function itemMesh(kind,x,z){let geo,mat=new THREE.MeshStandardMaterial({color:kind==='heart'?0xe45858:kind==='rupee'?0x46c7a0:kind==='key'?0xe1c86d:kind==='relic'?0xf5dc77:kind==='map'?0xd9d0b1:0xb8c6cc,metalness:.15,roughness:.35});if(kind==='key')geo=new THREE.TorusGeometry(.35,.11,8,16);else if(kind==='heart')geo=new THREE.OctahedronGeometry(.42,1);else if(kind==='rupee')geo=new THREE.OctahedronGeometry(.42,0);else geo=new THREE.BoxGeometry(.7,.55,.15);const m=new THREE.Mesh(geo,mat);m.position.set(x,.75,z);m.castShadow=true;m.userData={type:'item',kind};props.add(m);state.items.push(m);return m}
 function buildVillage(){
-clearZone();scene.background.set(0x91a9ae);scene.fog.color.set(0x91a9ae);scene.fog.density=.0065;
+state.zone='village';clearZone();scene.background.set(0x91a9ae);scene.fog.color.set(0x91a9ae);scene.fog.density=.0065;
 ground(170,grassMat);
 const road=new THREE.Mesh(new THREE.PlaneGeometry(24,135),pathMat);road.rotation.x=-Math.PI/2;road.position.set(0,.015,-10);road.receiveShadow=true;props.add(road);
 house(-24,-18,14,11,0xb9a47d);house(24,-18,14,11,0xc2aa82);house(-24,16,13,10,0x9c987e);house(24,16,13,10,0xb2a286);house(0,-52,16,10,0x8c7863);
@@ -89,19 +89,19 @@ setObjective(state.quest==='intro'?'Habla con Alma, la anciana':'Regresa a Villa
 locEl.textContent='VILLA ROBLE';camera.position.copy(state.spawn.village);yaw=Math.PI;
 }
 function buildField(){
-clearZone();scene.background.set(0x7f9a9a);scene.fog.color.set(0x7f9a9a);scene.fog.density=.0075;ground(190,grassMat);
+state.zone='field';clearZone();scene.background.set(0x7f9a9a);scene.fog.color.set(0x7f9a9a);scene.fog.density=.0075;ground(190,grassMat);
 for(let i=0;i<34;i++){const x=(Math.random()*2-1)*78,z=(Math.random()*2-1)*78;if(Math.abs(x)<26&&Math.abs(z)<18)continue;tree(x,z,.7+Math.random()*.7)}
 const path=new THREE.Mesh(new THREE.PlaneGeometry(15,160),pathMat);path.rotation.x=-Math.PI/2;path.position.y=.02;props.add(path);
 house(-38,-32,12,9,0x8e7c64);house(37,24,13,9,0xb69e78);
 npc('Eren, guardabosques',-27,-3,'ranger',0x607b5e);
 enemy('slime',-6,-5,3);enemy('bat',18,-20,2);enemy('wolf',25,10,4);enemy('knight',30,29,6);
 itemMesh('rupee',-13,-23);itemMesh('heart',23,-30);
-const gate=cube('FortressGate',5,6,1.1,stoneMat,new THREE.Vector3(0,-71,0),true);gate.userData.interactive='fortressGate';state.interactive.push(gate);
+const gate=cube('FortressGate',5,6,1.1,stoneMat,new THREE.Vector3(0,-71,0),true);state.gateBox=state.colliders[state.colliders.length-1];gate.userData.interactive='fortressGate';state.interactive.push(gate);
 sign('FORTALEZA DEL ECLIPSE',0,-64);locEl.textContent='CAMINO DEL ESTE';setObjective(state.doorOpen?'Abre la puerta de la fortaleza':'Busca la llave y abre el camino');
 camera.position.copy(state.spawn.field);yaw=0;
 }
 function buildDungeon(){
-clearZone();scene.background.set(0x11141a);scene.fog.color.set(0x11141a);scene.fog.density=.018;
+state.zone='dungeon';clearZone();scene.background.set(0x11141a);scene.fog.color.set(0x11141a);scene.fog.density=.018;
 ground(130,darkStoneMat);
 const roomWall=(x,z,w,d,h=6)=>{cube('DungeonWall',w,h,d,stoneMat,new THREE.Vector3(x,h/2,z),true)};
 for(let x=-55;x<=55;x+=14){roomWall(x,-58,12,2);roomWall(x,58,12,2)}
@@ -180,7 +180,7 @@ function killEnemy(e){e.userData.hp=0;toast(e.userData.name+' derrotado');state.
 function enemiesUpdate(dt){
 for(const e of state.enemies){if(e.userData.hp<=0)continue;e.userData.cool=Math.max(0,e.userData.cool-dt);const d=e.position.distanceTo(camera.position);if(d<28){const dir=camera.position.clone().sub(e.position);dir.y=0;dir.normalize();const speed=e.userData.kind==='boss'?1.5:e.userData.kind==='knight'?.85:1.1;e.position.addScaledVector(dir,speed*dt);e.position.y=Math.sin(clock.elapsedTime*3+e.userData.phase)*.08;if(d<2.1&&e.userData.cool<=0){e.userData.cool=e.userData.kind==='boss'?.55:1;damagePlayer()}}}
 }
-function collides(pos){const r=.42;const box=new THREE.Box3(new THREE.Vector3(pos.x-r,pos.y-.9,pos.z-r),new THREE.Vector3(pos.x+r,pos.y+.3,pos.z+r));return state.colliders.some(b=>b.intersectsBox(box))}
+function collides(pos){const r=.42;const box=new THREE.Box3(new THREE.Vector3(pos.x-r,pos.y-.9,pos.z-r),new THREE.Vector3(pos.x+r,pos.y+.3,pos.z+r));return state.colliders.some(b=>state.zone==='field'&&state.fortressOpen&&state.gateBox===b?false:b.intersectsBox(box))}
 function movement(dt){
 const forward=(held.has('w')?1:0)-(held.has('s')?1:0),strafe=(held.has('d')?1:0)-(held.has('a')?1:0);if(!forward&&!strafe)return;
 const len=Math.hypot(forward,strafe)||1;const f=forward/len,s=strafe/len,speed=(held.has('shift')?7.2:4.8)*dt;const dir=new THREE.Vector3(Math.sin(yaw)*f+Math.cos(yaw)*s,0,Math.cos(yaw)*f-Math.sin(yaw)*s);
@@ -192,7 +192,7 @@ camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;if(sha
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2))}
 function pauseGame(v){state.paused=v;pause.classList.toggle('hidden',!v);if(v)document.exitPointerLock?.();else canvasPointer()}
 function canvasPointer(){if(state.started&&!state.paused&&!state.dialogueOpen)renderer.domElement.requestPointerLock?.()}
-function updatePrompt(){if(!state.started||state.paused||state.dialogueOpen){promptEl.style.opacity=0;return}const n=nearestNpc(),it=nearestItem();let t='';if(n)t='E · Hablar con '+n.userData.name;else if(it)t='E · Recoger objeto';else{const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(0,0),camera);const h=ray.intersectObjects(props.children,true).filter(v=>v.distance<3.6)[0];let o=h?.object;while(o?.parent&&!o.userData.interactive)o=o.parent;if(o?.userData.interactive==='fortressGate')t=state.fortressOpen?'E · Entrar en la fortaleza':'E · Abrir puerta de la fortaleza';else if(o?.userData.interactive==='chest')t='E · Abrir cofre';else if(o?.userData.interactive==='crystal')t='E · Activar cristal'}promptEl.textContent=t;promptEl.style.opacity=t?1:0}
+function updatePrompt(){if(!state.started||state.paused||state.dialogueOpen||!inventory.classList.contains('hidden')){promptEl.style.opacity=0;return}const n=nearestNpc(),it=nearestItem();let t='';if(n)t='E · Hablar con '+n.userData.name;else if(it)t='E · Recoger objeto';else{const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(0,0),camera);const h=ray.intersectObjects(props.children,true).filter(v=>v.distance<3.6)[0];let o=h?.object;while(o?.parent&&!o.userData.interactive)o=o.parent;if(o?.userData.interactive==='fortressGate')t=state.fortressOpen?'E · Entrar en la fortaleza':'E · Abrir puerta de la fortaleza';else if(o?.userData.interactive==='chest')t='E · Abrir cofre';else if(o?.userData.interactive==='crystal')t='E · Activar cristal'}promptEl.textContent=t;promptEl.style.opacity=t?1:0}
 function updateInventory(){inventoryGrid.innerHTML='';for(const k of ['sword','boomerang','bow','bomb','candle','rod']){const d=document.createElement('div');d.className='inventory-item';d.innerHTML='<b>'+weapons[k][0]+'</b><small>'+ (state.inv.has(k)?'ENCONTRADO':'AÚN NO')+'</small>';inventoryGrid.appendChild(d)}}
 function startGame(){state.started=true;state.paused=false;intro.classList.add('hidden');hud.classList.remove('hidden');buildVillage();hudUpdate();updateInventory();toast('Bienvenido a Villa Roble · habla con Alma');canvasPointer();if('ontouchstart' in window)mobile.classList.remove('hidden')}
 document.getElementById('start').onclick=startGame;document.getElementById('resume').onclick=()=>pauseGame(false);document.getElementById('restart').onclick=()=>location.reload();document.getElementById('dialogue-next').onclick=nextDialogue;document.getElementById('close-inventory').onclick=()=>inventory.classList.add('hidden');
@@ -230,7 +230,7 @@ const originalHud=hudUpdate;hudUpdate=function(){originalHud();updateInventory()
 
 function loop(){
  requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);
- if(state.started&&!state.paused&&!state.dialogueOpen&&!state.shopOpen&&!inventory.classList.contains('hidden')){
+ if(state.started&&!state.paused&&!state.dialogueOpen&&!state.shopOpen&&inventory.classList.contains('hidden')){
    movement(dt);enemiesUpdate(dt);projectilesUpdate(dt);transitionCheck();attackCooldown=Math.max(0,attackCooldown-dt);
  }
  if(state.started&&!state.paused){cameraUpdate();updatePrompt();renderer.render(scene,camera)}
